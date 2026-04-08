@@ -4,139 +4,778 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>NeuralArt AI Studio</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
     <style>
-        body { background-color: #0d1117; color: #c9d1d9; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; text-align: center; margin: 0; padding: 30px; }
-        .container { max-width: 900px; margin: auto; }
-        h1 { color: #58a6ff; font-size: 2.5em; margin-bottom: 5px; }
-        p { color: #8b949e; margin-bottom: 30px; }
-        
-        .config-bar { background: #161b22; padding: 20px; border-radius: 12px; margin-bottom: 30px; border: 1px solid #30363d; box-shadow: 0 4px 15px rgba(0,0,0,0.3); }
-        .config-bar label { font-weight: bold; color: #58a6ff; display: block; margin-bottom: 10px; font-size: 1.1em;}
-        input[type="text"] { width: 90%; padding: 12px; background: #010409; border: 1px solid #30363d; color: #58a6ff; border-radius: 6px; font-size: 16px; outline: none; margin-bottom: 20px;}
-        
-        /* New Slider Styles */
-        .slider-container { display: flex; align-items: center; justify-content: center; gap: 15px; margin-top: 10px; }
-        input[type="range"] { width: 60%; cursor: pointer; }
-        #sliderValue { font-weight: bold; color: #a371f7; font-size: 1.2em; }
+        /* ── Reset & Base ── */
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-        .upload-section { display: flex; gap: 20px; justify-content: space-between; margin-bottom: 30px; }
-        .upload-box { width: 48%; height: 280px; background: #161b22; border: 2px dashed #30363d; border-radius: 12px; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; position: relative; overflow: hidden; transition: 0.3s; }
-        .upload-box:hover { border-color: #58a6ff; background: #1c2128; }
-        .upload-box span { font-size: 18px; font-weight: bold; color: #8b949e; }
-        .upload-box img { width: 100%; height: 100%; object-fit: cover; position: absolute; top: 0; left: 0; display: none; }
-        
-        .btn { background: #238636; color: white; padding: 15px 40px; border: none; font-size: 20px; font-weight: bold; border-radius: 8px; cursor: pointer; transition: 0.3s; box-shadow: 0 0 15px rgba(35, 134, 54, 0.4); }
-        .btn:hover { background: #2ea043; transform: translateY(-2px); box-shadow: 0 0 20px rgba(46, 160, 67, 0.6); }
-        .btn:disabled { background: #4a5568; cursor: not-allowed; }
-        
-        #loader { display: none; margin-top: 25px; color: #58a6ff; font-size: 20px; font-weight: bold; animation: pulse 1.5s infinite; }
-        @keyframes pulse { 0% { opacity: 0.6; } 50% { opacity: 1; } 100% { opacity: 0.6; } }
-        
-        #result-box { margin-top: 40px; display: none; padding: 20px; background: #161b22; border-radius: 12px; border: 1px solid #30363d; }
-        #result-img { max-width: 100%; border-radius: 8px; box-shadow: 0 0 25px rgba(163, 113, 247, 0.3); }
+        :root {
+            --bg:        #080c10;
+            --surface:   #0e1318;
+            --surface2:  #141a22;
+            --border:    rgba(255,255,255,0.07);
+            --border-hi: rgba(255,255,255,0.18);
+            --accent:    #c8a96e;      /* warm gold */
+            --accent2:   #6ec8c0;     /* teal */
+            --text:      #d4cec6;
+            --text-dim:  #6b6560;
+            --success:   #4caf7d;
+            --red:       #e07070;
+            --radius:    14px;
+            --glow:      0 0 30px rgba(200,169,110,0.15);
+        }
+
+        html { scroll-behavior: smooth; }
+
+        body {
+            background: var(--bg);
+            color: var(--text);
+            font-family: 'DM Mono', monospace;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        /* ── Animated grain overlay ── */
+        body::before {
+            content: '';
+            position: fixed; inset: 0;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='1'/%3E%3C/svg%3E");
+            opacity: 0.028;
+            pointer-events: none;
+            z-index: 1000;
+        }
+
+        /* ── Grid lines background ── */
+        body::after {
+            content: '';
+            position: fixed; inset: 0;
+            background-image:
+                linear-gradient(rgba(255,255,255,0.025) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255,255,255,0.025) 1px, transparent 1px);
+            background-size: 60px 60px;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        /* ── Layout ── */
+        .wrap {
+            position: relative; z-index: 1;
+            max-width: 960px;
+            margin: 0 auto;
+            padding: 60px 24px 80px;
+        }
+
+        /* ── Header ── */
+        header {
+            text-align: center;
+            margin-bottom: 64px;
+            animation: fadeUp 0.9s cubic-bezier(0.22,1,0.36,1) both;
+        }
+
+        .badge {
+            display: inline-block;
+            font-size: 10px;
+            letter-spacing: 0.2em;
+            text-transform: uppercase;
+            color: var(--accent);
+            border: 1px solid rgba(200,169,110,0.3);
+            padding: 5px 14px;
+            border-radius: 100px;
+            margin-bottom: 20px;
+            animation: fadeUp 0.9s 0.1s cubic-bezier(0.22,1,0.36,1) both;
+        }
+
+        h1 {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: clamp(2.8rem, 6vw, 4.4rem);
+            font-weight: 300;
+            letter-spacing: -0.01em;
+            color: #f0ece4;
+            line-height: 1.1;
+            animation: fadeUp 0.9s 0.15s cubic-bezier(0.22,1,0.36,1) both;
+        }
+
+        h1 em {
+            font-style: italic;
+            color: var(--accent);
+        }
+
+        .subtitle {
+            margin-top: 12px;
+            font-size: 12px;
+            letter-spacing: 0.12em;
+            color: var(--text-dim);
+            text-transform: uppercase;
+            animation: fadeUp 0.9s 0.2s cubic-bezier(0.22,1,0.36,1) both;
+        }
+
+        /* ── Cards / Surfaces ── */
+        .card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 28px 32px;
+            margin-bottom: 24px;
+            position: relative;
+            overflow: hidden;
+            animation: fadeUp 0.9s cubic-bezier(0.22,1,0.36,1) both;
+        }
+
+        .card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, rgba(200,169,110,0.4), transparent);
+        }
+
+        .card-label {
+            font-size: 9.5px;
+            letter-spacing: 0.22em;
+            text-transform: uppercase;
+            color: var(--accent);
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .card-label::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: var(--border);
+        }
+
+        /* ── Config Card ── */
+        .config-card { animation-delay: 0.25s; }
+
+        .url-input-wrap {
+            position: relative;
+            margin-bottom: 28px;
+        }
+
+        .url-input-wrap input[type="text"] {
+            width: 100%;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--accent2);
+            font-family: 'DM Mono', monospace;
+            font-size: 13px;
+            padding: 13px 16px 13px 40px;
+            outline: none;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+
+        .url-input-wrap input[type="text"]:focus {
+            border-color: rgba(200,169,110,0.5);
+            box-shadow: 0 0 0 3px rgba(200,169,110,0.08);
+        }
+
+        .url-input-wrap::before {
+            content: '⬡';
+            position: absolute;
+            left: 14px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-dim);
+            font-size: 14px;
+            pointer-events: none;
+        }
+
+        /* ── Alpha Slider ── */
+        .alpha-row {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .alpha-label {
+            font-size: 10px;
+            letter-spacing: 0.1em;
+            color: var(--text-dim);
+            white-space: nowrap;
+        }
+
+        input[type="range"] {
+            -webkit-appearance: none;
+            flex: 1;
+            height: 3px;
+            background: var(--border);
+            border-radius: 2px;
+            outline: none;
+            cursor: pointer;
+            position: relative;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 18px; height: 18px;
+            border-radius: 50%;
+            background: var(--accent);
+            border: 3px solid var(--bg);
+            box-shadow: 0 0 10px rgba(200,169,110,0.5);
+            transition: transform 0.15s;
+        }
+
+        input[type="range"]::-webkit-slider-thumb:hover {
+            transform: scale(1.2);
+        }
+
+        .alpha-val {
+            font-size: 15px;
+            color: var(--accent);
+            font-weight: 500;
+            min-width: 30px;
+            text-align: right;
+        }
+
+        /* ── Upload Section ── */
+        .upload-section {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 24px;
+            animation: fadeUp 0.9s 0.35s cubic-bezier(0.22,1,0.36,1) both;
+        }
+
+        .upload-box {
+            aspect-ratio: 4/3;
+            background: var(--surface);
+            border: 1px dashed var(--border-hi);
+            border-radius: var(--radius);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+            transition: border-color 0.25s, background 0.25s, transform 0.2s;
+        }
+
+        .upload-box:hover {
+            border-color: var(--accent);
+            background: var(--surface2);
+            transform: translateY(-2px);
+        }
+
+        .upload-box:hover .upload-icon { transform: scale(1.15) translateY(-3px); }
+
+        .upload-icon {
+            font-size: 32px;
+            margin-bottom: 10px;
+            transition: transform 0.25s cubic-bezier(0.34,1.56,0.64,1);
+        }
+
+        .upload-label-text {
+            font-size: 11px;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            color: var(--text-dim);
+        }
+
+        .upload-box .tag {
+            position: absolute;
+            top: 12px; left: 12px;
+            font-size: 9px;
+            letter-spacing: 0.18em;
+            text-transform: uppercase;
+            background: rgba(0,0,0,0.5);
+            border: 1px solid var(--border-hi);
+            padding: 3px 9px;
+            border-radius: 4px;
+            color: var(--text-dim);
+            backdrop-filter: blur(4px);
+        }
+
+        .upload-box img {
+            position: absolute; inset: 0;
+            width: 100%; height: 100%;
+            object-fit: cover;
+            display: none;
+            border-radius: var(--radius);
+        }
+
+        /* ── Generate Button ── */
+        .btn-wrap {
+            text-align: center;
+            margin-bottom: 24px;
+            animation: fadeUp 0.9s 0.45s cubic-bezier(0.22,1,0.36,1) both;
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            background: transparent;
+            border: 1px solid var(--accent);
+            color: var(--accent);
+            font-family: 'DM Mono', monospace;
+            font-size: 12px;
+            letter-spacing: 0.18em;
+            text-transform: uppercase;
+            padding: 16px 48px;
+            border-radius: 8px;
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+            transition: color 0.25s, transform 0.2s, box-shadow 0.25s;
+        }
+
+        .btn::before {
+            content: '';
+            position: absolute; inset: 0;
+            background: var(--accent);
+            transform: scaleX(0);
+            transform-origin: left;
+            transition: transform 0.3s cubic-bezier(0.22,1,0.36,1);
+            z-index: 0;
+        }
+
+        .btn:hover::before { transform: scaleX(1); }
+        .btn:hover { color: var(--bg); box-shadow: var(--glow); transform: translateY(-2px); }
+        .btn span { position: relative; z-index: 1; }
+        .btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+        .btn:disabled::before { display: none; }
+
+        /* ── Loader ── */
+        #loader {
+            display: none;
+            text-align: center;
+            padding: 20px;
+            animation: fadeUp 0.4s both;
+        }
+
+        .loader-dots {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            margin-bottom: 10px;
+        }
+
+        .loader-dots span {
+            width: 6px; height: 6px;
+            border-radius: 50%;
+            background: var(--accent);
+            animation: dotBounce 1.2s infinite;
+        }
+
+        .loader-dots span:nth-child(2) { animation-delay: 0.2s; }
+        .loader-dots span:nth-child(3) { animation-delay: 0.4s; }
+
+        @keyframes dotBounce {
+            0%, 80%, 100% { transform: translateY(0); opacity: 0.4; }
+            40% { transform: translateY(-8px); opacity: 1; }
+        }
+
+        .loader-text {
+            font-size: 11px;
+            letter-spacing: 0.16em;
+            text-transform: uppercase;
+            color: var(--text-dim);
+        }
+
+        /* ── Result Section ── */
+        #result-box {
+            display: none;
+            animation: fadeUp 0.7s cubic-bezier(0.22,1,0.36,1) both;
+        }
+
+        .result-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            overflow: hidden;
+            position: relative;
+        }
+
+        .result-card::before {
+            content: '';
+            position: absolute; top: 0; left: 0; right: 0;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, rgba(110,200,192,0.5), transparent);
+        }
+
+        .result-header {
+            padding: 20px 28px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .result-title {
+            font-size: 10px;
+            letter-spacing: 0.2em;
+            text-transform: uppercase;
+            color: var(--accent2);
+        }
+
+        .result-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .action-btn {
+            font-family: 'DM Mono', monospace;
+            font-size: 10px;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            padding: 7px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            border: 1px solid var(--border-hi);
+            background: transparent;
+            color: var(--text-dim);
+            transition: all 0.2s;
+        }
+
+        .action-btn:hover {
+            border-color: var(--accent2);
+            color: var(--accent2);
+        }
+
+        .action-btn.dl {
+            border-color: rgba(76,175,125,0.4);
+            color: var(--success);
+        }
+
+        .action-btn.dl:hover {
+            background: rgba(76,175,125,0.1);
+        }
+
+        /* ── Before / After Slider ── */
+        .ba-container {
+            position: relative;
+            overflow: hidden;
+            cursor: ew-resize;
+            user-select: none;
+            line-height: 0;
+        }
+
+        .ba-container img {
+            display: block;
+            width: 100%;
+            height: auto;
+        }
+
+        /* "after" is the result image sitting on top */
+        .ba-after {
+            position: absolute;
+            inset: 0;
+            overflow: hidden;
+            width: 50%; /* clipped dynamically by JS */
+        }
+
+        .ba-after img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            /* ensure it renders at the same size as .ba-before img */
+            position: absolute;
+            top: 0; left: 0;
+        }
+
+        .ba-divider {
+            position: absolute;
+            top: 0; bottom: 0;
+            left: 50%;
+            width: 2px;
+            background: #fff;
+            transform: translateX(-50%);
+            pointer-events: none;
+        }
+
+        .ba-handle {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 40px; height: 40px;
+            border-radius: 50%;
+            background: #fff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.4);
+            pointer-events: none;
+        }
+
+        .ba-handle svg { width: 18px; height: 18px; }
+
+        .ba-label {
+            position: absolute;
+            bottom: 12px;
+            font-size: 9px;
+            letter-spacing: 0.18em;
+            text-transform: uppercase;
+            background: rgba(0,0,0,0.55);
+            backdrop-filter: blur(6px);
+            padding: 4px 10px;
+            border-radius: 4px;
+            pointer-events: none;
+            color: #fff;
+        }
+
+        .ba-label-before { left: 12px; }
+        .ba-label-after  { right: 12px; }
+
+        /* Only show result image (no slider) before we have both images */
+        #result-img-simple {
+            width: 100%;
+            display: block;
+        }
+
+        /* ── Keyframes ── */
+        @keyframes fadeUp {
+            from { opacity: 0; transform: translateY(18px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+
+        /* ── Responsive ── */
+        @media (max-width: 600px) {
+            .upload-section { grid-template-columns: 1fr; }
+            .alpha-row { flex-wrap: wrap; }
+            .card { padding: 20px; }
+        }
     </style>
 </head>
 <body>
-    <div class="container">
-        <h1>🚀 NeuralArt Studio</h1>
-        <p>Ultra-Fast AI Engine with Style Control</p>
-        
-        <div class="config-bar">
-            <label>🔗 Step 1: Paste Your Ngrok Backend URL</label>
-            <input type="text" id="apiUrl" placeholder="e.g., https://abcd-1234.ngrok-free.app">
-            
-            <label style="margin-top: 15px;">🎛️ Step 2: Set Style Strength (Alpha)</label>
-            <div class="slider-container">
-                <span style="color:#8b949e;">More Details</span>
-                <input type="range" id="alphaSlider" min="0.1" max="1.0" step="0.1" value="0.6" oninput="document.getElementById('sliderValue').innerText = this.value">
-                <span style="color:#8b949e;">More Style</span>
-            </div>
-            <div>Current Alpha: <span id="sliderValue">0.6</span></div>
+<div class="wrap">
+
+    <!-- Header -->
+    <header>
+        <div class="badge">Neural Style Transfer</div>
+        <h1>NeuralArt <em>Studio</em></h1>
+        <p class="subtitle">Ultra-Fast AI Engine · VGG19 · LBFGS Optimization</p>
+    </header>
+
+    <!-- Step 1 – Config -->
+    <div class="card config-card" style="animation-delay:0.2s">
+        <div class="card-label">Step 01 — Configuration</div>
+
+        <div class="url-input-wrap">
+            <input type="text" id="apiUrl" placeholder="Paste your Ngrok backend URL  e.g. https://abcd-1234.ngrok-free.app">
         </div>
 
-        <div class="upload-section">
-            <div class="upload-box" onclick="document.getElementById('contentInput').click()">
-                <span id="contentLabel">📸 Upload Content Photo</span>
-                <img id="contentPreview">
-                <input type="file" id="contentInput" accept="image/*" style="display:none" onchange="previewImage(this, 'contentPreview', 'contentLabel')">
-            </div>
-            <div class="upload-box" onclick="document.getElementById('styleInput').click()">
-                <span id="styleLabel">🎨 Upload Style Painting</span>
-                <img id="stylePreview">
-                <input type="file" id="styleInput" accept="image/*" style="display:none" onchange="previewImage(this, 'stylePreview', 'styleLabel')">
-            </div>
-        </div>
-
-        <button id="generateBtn" class="btn" onclick="generateArt()">⚡ Generate Masterpiece</button>
-        <div id="loader">Processing in seconds... Please wait ⏳</div>
-
-        <div id="result-box">
-            <h2 style="color: #a371f7;">✨ AI Generated Result</h2>
-            <img id="result-img" src="">
+        <div class="card-label" style="margin-top:4px;">Step 02 — Style Strength (Alpha)</div>
+        <div class="alpha-row">
+            <span class="alpha-label">More Detail</span>
+            <input type="range" id="alphaSlider" min="0.1" max="1.0" step="0.1" value="0.6"
+                   oninput="document.getElementById('sliderValue').textContent = parseFloat(this.value).toFixed(1)">
+            <span class="alpha-label">More Style</span>
+            <span class="alpha-val" id="sliderValue">0.6</span>
         </div>
     </div>
 
-    <script>
-        let contentBase64 = "";
-        let styleBase64 = "";
+    <!-- Step 2 – Upload -->
+    <div class="upload-section">
+        <div class="upload-box" onclick="document.getElementById('contentInput').click()">
+            <span class="tag">Content</span>
+            <div class="upload-icon">📸</div>
+            <span class="upload-label-text" id="contentLabel">Upload Photo</span>
+            <img id="contentPreview" alt="content preview">
+            <input type="file" id="contentInput" accept="image/*" style="display:none"
+                   onchange="previewImage(this,'contentPreview','contentLabel')">
+        </div>
 
-        function previewImage(input, previewId, labelId) {
-            const file = input.files[0];
-            if (file) {
-                const reader = new FileReader();
-                reader.onload = e => {
-                    document.getElementById(previewId).src = e.target.result;
-                    document.getElementById(previewId).style.display = "block";
-                    document.getElementById(labelId).style.display = "none";
-                    if (previewId === 'contentPreview') contentBase64 = e.target.result;
-                    if (previewId === 'stylePreview') styleBase64 = e.target.result;
-                }
-                reader.readAsDataURL(file);
-            }
+        <div class="upload-box" onclick="document.getElementById('styleInput').click()">
+            <span class="tag">Style</span>
+            <div class="upload-icon">🎨</div>
+            <span class="upload-label-text" id="styleLabel">Upload Painting</span>
+            <img id="stylePreview" alt="style preview">
+            <input type="file" id="styleInput" accept="image/*" style="display:none"
+                   onchange="previewImage(this,'stylePreview','styleLabel')">
+        </div>
+    </div>
+
+    <!-- Generate -->
+    <div class="btn-wrap">
+        <button id="generateBtn" class="btn" onclick="generateArt()">
+            <span>⚡ Generate Masterpiece</span>
+        </button>
+    </div>
+
+    <!-- Loader -->
+    <div id="loader">
+        <div class="loader-dots"><span></span><span></span><span></span></div>
+        <div class="loader-text">Processing in seconds&nbsp;— please wait</div>
+    </div>
+
+    <!-- Result -->
+    <div id="result-box">
+        <div class="result-card">
+            <div class="result-header">
+                <span class="result-title">✨ AI Generated Result</span>
+                <div class="result-actions">
+                    <button class="action-btn" id="toggleViewBtn" onclick="toggleView()">Show Simple View</button>
+                    <button class="action-btn dl" id="downloadBtn" onclick="downloadImage()">⬇ Download</button>
+                </div>
+            </div>
+
+            <!-- Before / After Slider view -->
+            <div id="baView" class="ba-container">
+                <!-- before = content image -->
+                <img id="ba-before-img" src="" alt="Content (before)">
+                <!-- after = stylized result -->
+                <div class="ba-after" id="baAfterPanel">
+                    <img id="ba-after-img" src="" alt="Stylized (after)">
+                </div>
+                <div class="ba-divider" id="baDivider"></div>
+                <div class="ba-handle" id="baHandle">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="#333" stroke-width="2.5" stroke-linecap="round">
+                        <polyline points="9 18 3 12 9 6"/>
+                        <polyline points="15 6 21 12 15 18"/>
+                    </svg>
+                </div>
+                <span class="ba-label ba-label-before">Before</span>
+                <span class="ba-label ba-label-after">After</span>
+            </div>
+
+            <!-- Simple view (hidden by default) -->
+            <img id="result-img" style="display:none; width:100%;" alt="Stylized result">
+        </div>
+    </div>
+
+</div><!-- /wrap -->
+
+<script>
+    /* ─── State ─── */
+    let contentBase64 = "";
+    let styleBase64   = "";
+    let resultBase64  = "";
+    let baActive      = true;   // which view is shown
+
+    /* ─── Image Preview ─── */
+    function previewImage(input, previewId, labelId) {
+        const file = input.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = e => {
+            const prev = document.getElementById(previewId);
+            prev.src = e.target.result;
+            prev.style.display = "block";
+            document.getElementById(labelId).style.display = "none";
+
+            // hide upload icon too
+            const box = prev.closest('.upload-box');
+            const icon = box.querySelector('.upload-icon');
+            if (icon) icon.style.display = 'none';
+
+            if (previewId === 'contentPreview') contentBase64 = e.target.result;
+            if (previewId === 'stylePreview')   styleBase64   = e.target.result;
+        };
+        reader.readAsDataURL(file);
+    }
+
+    /* ─── Generate ─── */
+    async function generateArt() {
+        let apiUrl = document.getElementById("apiUrl").value.trim();
+        const alphaValue = parseFloat(document.getElementById("alphaSlider").value);
+
+        if (!apiUrl)                        return alert("❌ Please paste your Ngrok API URL!");
+        if (!contentBase64 || !styleBase64) return alert("❌ Please upload both images!");
+        if (apiUrl.endsWith("/"))           apiUrl = apiUrl.slice(0, -1);
+
+        const btn       = document.getElementById("generateBtn");
+        const loader    = document.getElementById("loader");
+        const resultBox = document.getElementById("result-box");
+
+        btn.disabled            = true;
+        loader.style.display    = "block";
+        resultBox.style.display = "none";
+
+        try {
+            const response = await fetch(`${apiUrl}/stylize`, {
+                method:  "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    content_img: contentBase64,
+                    style_img:   styleBase64,
+                    alpha:       alphaValue
+                })
+            });
+
+            if (!response.ok) throw new Error("Server Error! Check Colab.");
+
+            const data = await response.json();
+            resultBase64 = data.stylized_img;
+
+            /* ── populate both views ── */
+            document.getElementById("result-img").src     = resultBase64;
+            document.getElementById("ba-before-img").src  = contentBase64;
+            document.getElementById("ba-after-img").src   = resultBase64;
+
+            /* reset slider to 50 % */
+            setBAPosition(0.5);
+
+            /* show BA view, hide simple */
+            document.getElementById("baView").style.display      = "block";
+            document.getElementById("result-img").style.display  = "none";
+            document.getElementById("toggleViewBtn").textContent  = "Show Simple View";
+            baActive = true;
+
+            resultBox.style.display = "block";
+            window.scrollTo({ top: document.body.scrollHeight, behavior: "smooth" });
+
+        } catch (err) {
+            alert("❌ Failed: " + err.message);
+        } finally {
+            btn.disabled         = false;
+            loader.style.display = "none";
         }
+    }
 
-        async function generateArt() {
-            let apiUrl = document.getElementById("apiUrl").value.trim();
-            const alphaValue = parseFloat(document.getElementById("alphaSlider").value);
-            
-            if (!apiUrl) return alert("❌ Please paste your Ngrok API URL!");
-            if (!contentBase64 || !styleBase64) return alert("❌ Please upload both images!");
+    /* ─── View Toggle ─── */
+    function toggleView() {
+        baActive = !baActive;
+        document.getElementById("baView").style.display      = baActive ? "block" : "none";
+        document.getElementById("result-img").style.display  = baActive ? "none"  : "block";
+        document.getElementById("toggleViewBtn").textContent  = baActive ? "Show Simple View" : "Show Comparison";
+    }
 
-            if (apiUrl.endsWith("/")) apiUrl = apiUrl.slice(0, -1);
+    /* ─── Download ─── */
+    function downloadImage() {
+        if (!resultBase64) return;
+        const a    = document.createElement("a");
+        a.href     = resultBase64;
+        a.download = "neuralart_result.jpg";
+        a.click();
+    }
 
-            const btn = document.getElementById("generateBtn");
-            const loader = document.getElementById("loader");
-            const resultBox = document.getElementById("result-box");
+    /* ─── Before / After Slider ─── */
+    const baContainer   = document.getElementById("baView");
+    const baAfterPanel  = document.getElementById("baAfterPanel");
+    const baDivider     = document.getElementById("baDivider");
+    const baHandle      = document.getElementById("baHandle");
 
-            btn.disabled = true;
-            loader.style.display = "block";
-            resultBox.style.display = "none";
+    let dragging = false;
 
-            try {
-                const response = await fetch(`${apiUrl}/stylize`, {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                        content_img: contentBase64,
-                        style_img: styleBase64,
-                        alpha: alphaValue
-                    })
-                });
+    function setBAPosition(fraction) {
+        const pct                   = Math.max(0, Math.min(1, fraction)) * 100;
+        baAfterPanel.style.width    = pct + "%";
+        baDivider.style.left        = pct + "%";
+        baHandle.style.left         = pct + "%";
+    }
 
-                if (!response.ok) throw new Error("Server Error! Check Colab.");
-                
-                const data = await response.json();
-                document.getElementById("result-img").src = data.stylized_img;
-                resultBox.style.display = "block";
-                window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
-                
-            } catch (error) {
-                alert("❌ Failed: " + error.message);
-            } finally {
-                btn.disabled = false;
-                loader.style.display = "none";
-            }
-        }
-    </script>
+    function getBAFraction(e) {
+        const rect = baContainer.getBoundingClientRect();
+        const x    = (e.touches ? e.touches[0].clientX : e.clientX) - rect.left;
+        return x / rect.width;
+    }
+
+    baContainer.addEventListener("mousedown",  e => { dragging = true; setBAPosition(getBAFraction(e)); });
+    baContainer.addEventListener("touchstart", e => { dragging = true; setBAPosition(getBAFraction(e)); }, { passive: true });
+
+    window.addEventListener("mousemove",  e => { if (dragging) setBAPosition(getBAFraction(e)); });
+    window.addEventListener("touchmove",  e => { if (dragging) setBAPosition(getBAFraction(e)); }, { passive: true });
+
+    window.addEventListener("mouseup",   () => dragging = false);
+    window.addEventListener("touchend",  () => dragging = false);
+</script>
 </body>
 </html>
