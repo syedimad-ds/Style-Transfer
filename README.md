@@ -100,3 +100,8 @@ Since this project requires a GPU for processing, the backend is hosted on Googl
 - Image Choice: For the best results, use high-contrast style images (e.g., Van Gogh's Starry Night, Monet, or heavy textures).
 - Resolution: The output resolution is currently optimized to 256px to ensure lightning-fast processing (~10s) and prevent Colab Free Tier timeouts.
 - Session Limits: Keep the Colab tab open while generating images. If the Colab session disconnects, you will need to restart the backend to generate a new Ngrok URL.
+
+---
+
+## 👨‍💻 Author
+Syed Imad Muzaffar 🎓 B.E. in Artificial Intelligence and Data Science
