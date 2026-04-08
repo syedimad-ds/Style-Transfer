@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NeuralArt AI Studio</title>
+    <style>
+        body { background-color: #0d1117; color: #c9d1d9; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; text-align: center; margin: 0; padding: 30px; }
+        .container { max-width: 900px; margin: auto; }
+        h1 { color: #58a6ff; font-size: 2.5em; margin-bottom: 5px; }
+        p { color: #8b949e; margin-bottom: 30px; }
+        
+        .config-bar { background: #161b22; padding: 20px; border-radius: 12px; margin-bottom: 30px; border: 1px solid #30363d; box-shadow: 0 4px 15px rgba(0,0,0,0.3); }
+        .config-bar label { font-weight: bold; color: #58a6ff; display: block; margin-bottom: 10px; font-size: 1.1em;}
+        input[type="text"] { width: 90%; padding: 12px; background: #010409; border: 1px solid #30363d; color: #58a6ff; border-radius: 6px; font-size: 16px; outline: none; margin-bottom: 20px;}
+        
+        /* New Slider Styles */
+        .slider-container { display: flex; align-items: center; justify-content: center; gap: 15px; margin-top: 10px; }
+        input[type="range"] { width: 60%; cursor: pointer; }
+        #sliderValue { font-weight: bold; color: #a371f7; font-size: 1.2em; }
+
+        .upload-section { display: flex; gap: 20px; justify-content: space-between; margin-bottom: 30px; }
+        .upload-box { width: 48%; height: 280px; background: #161b22; border: 2px dashed #30363d; border-radius: 12px; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; position: relative; overflow: hidden; transition: 0.3s; }
+        .upload-box:hover { border-color: #58a6ff; background: #1c2128; }
+        .upload-box span { font-size: 18px; font-weight: bold; color: #8b949e; }
+        .upload-box img { width: 100%; height: 100%; object-fit: cover; position: absolute; top: 0; left: 0; display: none; }
+        
+        .btn { background: #238636; color: white; padding: 15px 40px; border: none; font-size: 20px; font-weight: bold; border-radius: 8px; cursor: pointer; transition: 0.3s; box-shadow: 0 0 15px rgba(35, 134, 54, 0.4); }
+        .btn:hover { background: #2ea043; transform: translateY(-2px); box-shadow: 0 0 20px rgba(46, 160, 67, 0.6); }
+        .btn:disabled { background: #4a5568; cursor: not-allowed; }
+        
+        #loader { display: none; margin-top: 25px; color: #58a6ff; font-size: 20px; font-weight: bold; animation: pulse 1.5s infinite; }
+        @keyframes pulse { 0% { opacity: 0.6; } 50% { opacity: 1; } 100% { opacity: 0.6; } }
+        
+        #result-box { margin-top: 40px; display: none; padding: 20px; background: #161b22; border-radius: 12px; border: 1px solid #30363d; }
+        #result-img { max-width: 100%; border-radius: 8px; box-shadow: 0 0 25px rgba(163, 113, 247, 0.3); }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚀 NeuralArt Studio</h1>
+        <p>Ultra-Fast AI Engine with Style Control</p>
+        
+        <div class="config-bar">
+            <label>🔗 Step 1: Paste Your Ngrok Backend URL</label>
+            <input type="text" id="apiUrl" placeholder="e.g., https://abcd-1234.ngrok-free.app">
+            
+            <label style="margin-top: 15px;">🎛️ Step 2: Set Style Strength (Alpha)</label>
+            <div class="slider-container">
+                <span style="color:#8b949e;">More Details</span>
+                <input type="range" id="alphaSlider" min="0.1" max="1.0" step="0.1" value="0.6" oninput="document.getElementById('sliderValue').innerText = this.value">
+                <span style="color:#8b949e;">More Style</span>
+            </div>
+            <div>Current Alpha: <span id="sliderValue">0.6</span></div>
+        </div>
+
+        <div class="upload-section">
+            <div class="upload-box" onclick="document.getElementById('contentInput').click()">
+                <span id="contentLabel">📸 Upload Content Photo</span>
+                <img id="contentPreview">
+                <input type="file" id="contentInput" accept="image/*" style="display:none" onchange="previewImage(this, 'contentPreview', 'contentLabel')">
+            </div>
+            <div class="upload-box" onclick="document.getElementById('styleInput').click()">
+                <span id="styleLabel">🎨 Upload Style Painting</span>
+                <img id="stylePreview">
+                <input type="file" id="styleInput" accept="image/*" style="display:none" onchange="previewImage(this, 'stylePreview', 'styleLabel')">
+            </div>
+        </div>
+
+        <button id="generateBtn" class="btn" onclick="generateArt()">⚡ Generate Masterpiece</button>
+        <div id="loader">Processing in seconds... Please wait ⏳</div>
+
+        <div id="result-box">
+            <h2 style="color: #a371f7;">✨ AI Generated Result</h2>
+            <img id="result-img" src="">
+        </div>
+    </div>
+
+    <script>
+        let contentBase64 = "";
+        let styleBase64 = "";
+
+        function previewImage(input, previewId, labelId) {
+            const file = input.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = e => {
+                    document.getElementById(previewId).src = e.target.result;
+                    document.getElementById(previewId).style.display = "block";
+                    document.getElementById(labelId).style.display = "none";
+                    if (previewId === 'contentPreview') contentBase64 = e.target.result;
+                    if (previewId === 'stylePreview') styleBase64 = e.target.result;
+                }
+                reader.readAsDataURL(file);
+            }
+        }
+
+        async function generateArt() {
+            let apiUrl = document.getElementById("apiUrl").value.trim();
+            const alphaValue = parseFloat(document.getElementById("alphaSlider").value);
+            
+            if (!apiUrl) return alert("❌ Please paste your Ngrok API URL!");
+            if (!contentBase64 || !styleBase64) return alert("❌ Please upload both images!");
+
+            if (apiUrl.endsWith("/")) apiUrl = apiUrl.slice(0, -1);
+
+            const btn = document.getElementById("generateBtn");
+            const loader = document.getElementById("loader");
+            const resultBox = document.getElementById("result-box");
+
+            btn.disabled = true;
+            loader.style.display = "block";
+            resultBox.style.display = "none";
+
+            try {
+                const response = await fetch(`${apiUrl}/stylize`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        content_img: contentBase64,
+                        style_img: styleBase64,
+                        alpha: alphaValue
+                    })
+                });
+
+                if (!response.ok) throw new Error("Server Error! Check Colab.");
+                
+                const data = await response.json();
+                document.getElementById("result-img").src = data.stylized_img;
+                resultBox.style.display = "block";
+                window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+                
+            } catch (error) {
+                alert("❌ Failed: " + error.message);
+            } finally {
+                btn.disabled = false;
+                loader.style.display = "none";
+            }
+        }
+    </script>
+</body>
+</html>
